@@ -1,7 +1,8 @@
 import json
+import os
 from datetime import datetime
 
-WARNINGS_FILE = "warnings.json"
+WARNINGS_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "data", "warnings.json")
 
 
 def load_warnings():

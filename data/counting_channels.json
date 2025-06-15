@@ -1,0 +1,36 @@
+{
+  "1382678597772247141": {
+    "channel_id": 1383681276573126737,
+    "current_number": 1,
+    "last_user_id": 405740767202508810,
+    "high_score": 11,
+    "total_counts": 14,
+    "user_stats": {
+      "405740767202508810": {
+        "correct": 9,
+        "failed": 10
+      },
+      "769828009598779412": {
+        "correct": 5,
+        "failed": 1
+      }
+    }
+  },
+  "1327486238768496663": {
+    "channel_id": 1383684010126868520,
+    "current_number": 2,
+    "last_user_id": 869892784281239572,
+    "high_score": 2,
+    "total_counts": 2,
+    "user_stats": {
+      "405740767202508810": {
+        "correct": 1,
+        "failed": 0
+      },
+      "869892784281239572": {
+        "correct": 1,
+        "failed": 2
+      }
+    }
+  }
+}

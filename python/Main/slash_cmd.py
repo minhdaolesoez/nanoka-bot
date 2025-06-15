@@ -8,6 +8,12 @@ from warn_logic import (
     remove_timeout_logic,
 )
 from channels import setup_quarantine_channel, setup_log_channel
+import sys
+import os
+
+sys.path.append('../Fun/number_count')
+from counting_setup import setup_counting_channel, setup_counting_in_existing_channel # type: ignore
+from counting_logic import get_counting_stats # type: ignore
 
 
 # SLASH COMMANDS
@@ -168,3 +174,101 @@ async def removetimeout_slash(interaction: discord.Interaction, user: discord.Me
     await remove_timeout_logic(
         user, interaction.user, interaction.response.send_message, ephemeral=True
     )
+
+
+@bot.tree.command(name="setupcounting", description="Setup a counting channel for the server")
+async def setupcounting_slash(
+    interaction: discord.Interaction, 
+    channel: discord.TextChannel = None,
+    category_name: str = "Fun"
+):
+    """Setup counting channel with slash command"""
+    # Check for specific permissions
+    if not (
+        interaction.user.guild_permissions.manage_channels
+        and interaction.user.guild_permissions.manage_roles
+    ):
+        await interaction.response.send_message(
+            "❌ You need 'Manage Channels' and 'Manage Roles' permissions to set up a counting channel!",
+            ephemeral=True,
+        )
+        return
+
+    if channel:
+        # Setup counting in the specified existing channel
+        await setup_counting_in_existing_channel(
+            channel,
+            interaction.user,
+            interaction.response.send_message,
+            ephemeral=True,
+        )
+    else:
+        # Create a new counting channel
+        await setup_counting_channel(
+            interaction.guild,
+            interaction.user,
+            interaction.response.send_message,
+            category_name,
+            ephemeral=True,
+        )
+
+
+@bot.tree.command(name="countingstats", description="View counting statistics")
+async def countingstats_slash(
+    interaction: discord.Interaction, user: discord.Member = None
+):
+    """View counting statistics for server or specific user"""
+
+    if user:
+        # Get user-specific stats
+        stats = await get_counting_stats(interaction.guild.id, user)
+        if not stats:
+            await interaction.response.send_message(
+                "❌ No counting channel set up for this server!", ephemeral=True
+            )
+            return
+
+        embed = discord.Embed(
+            title=f"🔢 Counting Stats for {user.display_name}",
+            color=discord.Color.blue(),
+        )
+        embed.set_thumbnail(url=user.display_avatar.url)
+        embed.add_field(name="✅ Correct", value=f"{stats['correct']}", inline=True)
+        embed.add_field(name="❌ Failed", value=f"{stats['failed']}", inline=True)
+        embed.add_field(name="🎯 Accuracy", value=f"{stats['accuracy']:.1f}%", inline=True)
+
+    else:
+        # Get server stats
+        stats = await get_counting_stats(interaction.guild.id)
+        if not stats:
+            await interaction.response.send_message(
+                "❌ No counting channel set up for this server!", ephemeral=True
+            )
+            return
+
+        embed = discord.Embed(
+            title=f"🔢 Server Counting Stats",
+            color=discord.Color.blue(),
+        )
+        embed.add_field(name="🔢 Current Number", value=f"{stats['current_number']}", inline=True)
+        embed.add_field(name="🏆 High Score", value=f"{stats['high_score']}", inline=True)
+        embed.add_field(name="📊 Total Counts", value=f"{stats['total_counts']}", inline=True)
+
+        # Show top 5 counters
+        user_stats = stats["user_stats"]
+        if user_stats:
+            sorted_users = sorted(
+                user_stats.items(), key=lambda x: x[1]["correct"], reverse=True
+            )[:5]
+            leaderboard = ""
+            for i, (user_id, user_data) in enumerate(sorted_users, 1):
+                user_obj = interaction.guild.get_member(int(user_id))
+                user_name = user_obj.display_name if user_obj else "Unknown User"
+                leaderboard += f"{i}. {user_name}: {user_data['correct']} correct\n"
+
+            if leaderboard:
+                embed.add_field(
+                    name="🏅 Top Counters", value=leaderboard, inline=False
+                )
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)

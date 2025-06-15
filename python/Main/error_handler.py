@@ -2,6 +2,10 @@ from bot_setup import bot
 import discord # type: ignore
 from datetime import datetime
 from quarantine import is_quarantine_channel, increment_ban_counter, get_log_channel
+import sys
+import os
+sys.path.append('../Fun/number_count')
+from counting_logic import handle_counting_message # type: ignore
 
 # Error handling for slash commands
 @bot.tree.error
@@ -24,6 +28,9 @@ async def on_message(message):
     # Ignore bot messages
     if message.author.bot:
         return
+
+    # Handle counting messages first
+    await handle_counting_message(message)
 
     # Check if message is in a quarantine channel
     if message.guild and is_quarantine_channel(message.guild.id, message.channel.id):

@@ -1,6 +1,7 @@
 import json
+import os
 
-QUARANTINE_FILE = "quarantine_channels.json"
+QUARANTINE_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "data", "quarantine_channels.json")
 
 
 def load_quarantine_channels():
