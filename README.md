@@ -1,1 +1,1 @@
-# laffey-chan-bot
+# nanoka-bot
