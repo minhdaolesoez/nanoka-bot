@@ -1,3 +1,6 @@
 __pycache__/
 .env
 data/
+
+# Virtual Environment files to ignore
+venv/

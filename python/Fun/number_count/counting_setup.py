@@ -5,12 +5,31 @@ from datetime import datetime
 
 COUNTING_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "counting_channels.json")
 
+def initialize_counting_file():
+    """Tạo file JSON mặc định với nội dung {} nếu nó chưa tồn tại."""
+    if not os.path.exists(COUNTING_FILE):
+        try:
+            # Đảm bảo thư mục 'data' tồn tại trước khi tạo file
+            data_dir = os.path.dirname(COUNTING_FILE)
+            if not os.path.exists(data_dir):
+                os.makedirs(data_dir)
+                
+            with open(COUNTING_FILE, "w") as f:
+                json.dump({}, f)  # Ghi đối tượng JSON rỗng vào file
+            print(f"File created: {COUNTING_FILE} initialized with {{}}.")
+        except Exception as e:
+            print(f"Error creating file {COUNTING_FILE}: {e}")
+
 def load_counting_channels():
     """Load counting channels data from JSON file"""
     try:
         with open(COUNTING_FILE, "r") as f:
             return json.load(f)
     except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError:
+        # Handle case where file exists but is empty or contains invalid JSON
+        print(f"Warning: Counting data file found but is empty or corrupt. Starting with empty data: {COUNTING_FILE}")
         return {}
 
 def save_counting_channels(counting_data):
