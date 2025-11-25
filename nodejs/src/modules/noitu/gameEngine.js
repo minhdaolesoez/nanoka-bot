@@ -28,7 +28,7 @@ function formatStatsLine(userId, { currentStreak = 0, bestStreak = 0, wins = 0, 
 /**
  * Get a word starting with given prefix that hasn't been used
  */
-function getWordStartingWith(start, history = []) {
+export function getWordStartingWith(start, history = []) {
     const possibleWords = wordPairs[start] || [];
 
     if (possibleWords.length === 0) {
