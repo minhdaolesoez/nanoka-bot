@@ -1,0 +1,22 @@
+{
+  "name": "nanoka-bot",
+  "version": "1.0.0",
+  "description": "A Discord moderation bot with warnings, quarantine, and counting features",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "moderation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1"
+  }
+}
