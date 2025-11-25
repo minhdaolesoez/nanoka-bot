@@ -20,7 +20,8 @@ export const RESPONSE_CODES = {
     NOT_IN_DICT: 'not_in_dict',
     INVALID_FORMAT: 'invalid_format',
     LOSS: 'loss',
-    WIN: 'win'
+    WIN: 'win',
+    SAME_PLAYER: 'same_player'
 };
 
 // Response types

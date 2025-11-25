@@ -3,7 +3,7 @@ import { isQuarantineChannel, incrementBanCounter, getLogChannel } from '../modu
 import { handleCountingMessage } from '../modules/countingLogic.js';
 import { checkChannel, checkUser, isChannelInGame, getChannelMode } from '../modules/noitu/index.js';
 import { getWordStartingWith, normalizeVietnamese } from '../modules/noitu/index.js';
-import { RESPONSE_CODES, GAME_MODES } from '../modules/noitu/constants.js';
+import { RESPONSE_CODES, RESPONSE_TYPES, GAME_MODES } from '../modules/noitu/constants.js';
 
 export const name = Events.MessageCreate;
 export const once = false;
@@ -157,58 +157,57 @@ async function handleNoituDM(message) {
     
     const result = checkUser(message.author.id, word);
     
-    switch (result.code) {
-        case RESPONSE_CODES.NO_CURRENT_GAME:
-            // No active game, ignore
-            break;
-            
-        case RESPONSE_CODES.SUCCESS:
-            // User's word is valid, bot responds with a word
-            const lastSyllable = word.split(' ')[1];
-            const botWord = getWordStartingWith(lastSyllable);
-            
-            if (botWord) {
-                // Bot plays a word
-                const botResult = checkUser(message.author.id, botWord, true);
-                await message.reply(`${botWord}`);
-            } else {
-                // Bot can't find a word - user wins!
+    // Check by type first
+    if (result.type === RESPONSE_TYPES.SUCCESS) {
+        // User's word is valid, bot responds with a word
+        const lastSyllable = word.split(' ')[1];
+        const botWord = getWordStartingWith(lastSyllable);
+        
+        if (botWord) {
+            // Bot plays a word
+            checkUser(message.author.id, botWord, true);
+            await message.reply(`${botWord}`);
+        } else {
+            // Bot can't find a word - user wins!
+            await message.reply({
+                embeds: [new EmbedBuilder()
+                    .setTitle('🎉 Bạn thắng!')
+                    .setDescription(`Tôi không tìm được từ bắt đầu bằng "**${lastSyllable}**".\nDùng \`/newgame\` để chơi lại!`)
+                    .setColor(0x00FF00)]
+            });
+        }
+    } else if (result.type === RESPONSE_TYPES.ERROR) {
+        switch (result.code) {
+            case RESPONSE_CODES.NOT_IN_DICT:
+                await message.react('❌');
                 await message.reply({
                     embeds: [new EmbedBuilder()
-                        .setTitle('🎉 Bạn thắng!')
-                        .setDescription(`Tôi không tìm được từ bắt đầu bằng "**${lastSyllable}**".\nDùng \`/newgame\` để chơi lại!`)
-                        .setColor(0x00FF00)]
+                        .setDescription(`❌ "**${word}**" không có trong từ điển!`)
+                        .setColor(0xFF0000)]
                 });
-            }
-            break;
-            
-        case RESPONSE_CODES.INVALID_WORD:
-            await message.react('❌');
-            await message.reply({
-                embeds: [new EmbedBuilder()
-                    .setDescription(`❌ "**${word}**" không có trong từ điển!`)
-                    .setColor(0xFF0000)]
-            });
-            break;
-            
-        case RESPONSE_CODES.WRONG_START:
-            await message.react('❌');
-            await message.reply({
-                embeds: [new EmbedBuilder()
-                    .setDescription(`❌ Từ phải bắt đầu bằng "**${result.expected}**"!`)
-                    .setColor(0xFF0000)]
-            });
-            break;
-            
-        case RESPONSE_CODES.ALREADY_USED:
-            await message.react('🔄');
-            await message.reply({
-                embeds: [new EmbedBuilder()
-                    .setDescription(`🔄 "**${word}**" đã được sử dụng rồi!`)
-                    .setColor(0xFFA500)]
-            });
-            break;
+                break;
+                
+            case RESPONSE_CODES.MISMATCH:
+                await message.react('❌');
+                const expectedWord = result.currentWord ? result.currentWord.split(' ').pop() : 'từ';
+                await message.reply({
+                    embeds: [new EmbedBuilder()
+                        .setDescription(`❌ Từ phải bắt đầu bằng "**${expectedWord}**"!`)
+                        .setColor(0xFF0000)]
+                });
+                break;
+                
+            case RESPONSE_CODES.REPEATED:
+                await message.react('🔄');
+                await message.reply({
+                    embeds: [new EmbedBuilder()
+                        .setDescription(`🔄 "**${word}**" đã được sử dụng rồi!`)
+                        .setColor(0xFFA500)]
+                });
+                break;
+        }
     }
+    // RESPONSE_TYPES.INFO means no active game, ignore
 }
 
 /**
@@ -226,83 +225,95 @@ async function handleNoituChannel(message) {
     const mode = getChannelMode(message.channel.id);
     const result = checkChannel(message.channel.id, message.author.id, word);
     
-    switch (result.code) {
-        case RESPONSE_CODES.SUCCESS:
-            // Valid word
-            await message.react('✅');
-            
-            if (mode === GAME_MODES.BOT) {
-                // Bot mode: bot responds with a word
-                const lastSyllable = word.split(' ')[1];
-                const botWord = getWordStartingWith(lastSyllable);
-                
-                if (botWord) {
-                    // Bot plays a word
-                    checkChannel(message.channel.id, message.client.user.id, botWord);
-                    await message.channel.send(`🤖 ${botWord}`);
-                } else {
-                    // Bot can't find a word - players win!
-                    await message.channel.send({
-                        embeds: [new EmbedBuilder()
-                            .setTitle('🎉 Các bạn thắng!')
-                            .setDescription(`Bot không tìm được từ bắt đầu bằng "**${lastSyllable}**".\nDùng \`/newgame\` để chơi lại!`)
-                            .setColor(0x00FF00)]
-                    });
-                }
-            }
-            // In PvP mode, just react and wait for next player
-            break;
-            
-        case RESPONSE_CODES.INVALID_WORD:
-            await message.react('❌');
-            if (result.wrongCount !== undefined) {
-                await message.reply({
-                    embeds: [new EmbedBuilder()
-                        .setDescription(`❌ "**${word}**" không có trong từ điển!\n⚠️ Sai ${result.wrongCount}/3 lần`)
-                        .setColor(0xFF0000)],
-                    allowedMentions: { repliedUser: false }
-                });
-                
-                if (result.gameOver) {
-                    await message.channel.send({
-                        embeds: [new EmbedBuilder()
-                            .setTitle('💥 Game Over!')
-                            .setDescription(`${message.author} đã sai 3 lần!\nDùng \`/newgame\` để chơi lại.`)
-                            .setColor(0x8B0000)]
-                    });
-                }
-            }
-            break;
-            
-        case RESPONSE_CODES.WRONG_START:
-            await message.react('❌');
-            if (result.wrongCount !== undefined) {
-                await message.reply({
-                    embeds: [new EmbedBuilder()
-                        .setDescription(`❌ Từ phải bắt đầu bằng "**${result.expected}**"!\n⚠️ Sai ${result.wrongCount}/3 lần`)
-                        .setColor(0xFF0000)],
-                    allowedMentions: { repliedUser: false }
-                });
-                
-                if (result.gameOver) {
-                    await message.channel.send({
-                        embeds: [new EmbedBuilder()
-                            .setTitle('💥 Game Over!')
-                            .setDescription(`${message.author} đã sai 3 lần!\nDùng \`/newgame\` để chơi lại.`)
-                            .setColor(0x8B0000)]
-                    });
-                }
-            }
-            break;
-            
-        case RESPONSE_CODES.ALREADY_USED:
-            await message.react('🔄');
-            await message.reply({
+    console.log('Noitu result:', result); // Debug log
+    
+    if (result.type === RESPONSE_TYPES.SUCCESS) {
+        // Valid word
+        await message.react('✅');
+        
+        // Check if user won (their word leads to a dead-end)
+        if (result.message && result.message.includes('THẮNG')) {
+            await message.channel.send({
                 embeds: [new EmbedBuilder()
-                    .setDescription(`🔄 "**${word}**" đã được sử dụng rồi!`)
-                    .setColor(0xFFA500)],
-                allowedMentions: { repliedUser: false }
+                    .setTitle('🎉 Chiến thắng!')
+                    .setDescription(result.message)
+                    .setColor(0x00FF00)]
             });
-            break;
+            return;
+        }
+        
+        if (mode === GAME_MODES.BOT) {
+            // Bot mode: bot responds with a word
+            const lastSyllable = word.split(' ')[1];
+            const botWord = getWordStartingWith(lastSyllable, result.gameData?.history || []);
+            
+            if (botWord) {
+                // Bot plays a word
+                checkChannel(message.channel.id, message.client.user.id, botWord);
+                await message.channel.send(`🤖 ${botWord}`);
+            } else {
+                // Bot can't find a word - players win!
+                await message.channel.send({
+                    embeds: [new EmbedBuilder()
+                        .setTitle('🎉 Các bạn thắng!')
+                        .setDescription(`Bot không tìm được từ bắt đầu bằng "**${lastSyllable}**".\nDùng \`/newgame\` để chơi lại!`)
+                        .setColor(0x00FF00)]
+                });
+            }
+        }
+        // In PvP mode, just react and wait for next player
+    } else if (result.type === RESPONSE_TYPES.ERROR) {
+        switch (result.code) {
+            case RESPONSE_CODES.LOSS:
+                await message.react('💀');
+                await message.channel.send({
+                    embeds: [new EmbedBuilder()
+                        .setTitle('💀 Hết từ!')
+                        .setDescription(result.message || 'Không còn từ nào để nối tiếp!')
+                        .setColor(0x8B0000)]
+                });
+                break;
+                
+            case RESPONSE_CODES.NOT_IN_DICT:
+                await message.react('❌');
+                await message.reply({
+                    embeds: [new EmbedBuilder()
+                        .setDescription(`❌ ${result.message || `"**${word}**" không có trong từ điển!`}`)
+                        .setColor(0xFF0000)],
+                    allowedMentions: { repliedUser: false }
+                });
+                break;
+                
+            case RESPONSE_CODES.MISMATCH:
+                await message.react('❌');
+                await message.reply({
+                    embeds: [new EmbedBuilder()
+                        .setDescription(`❌ ${result.message || `Từ phải bắt đầu bằng từ khác!`}`)
+                        .setColor(0xFF0000)],
+                    allowedMentions: { repliedUser: false }
+                });
+                break;
+                
+            case RESPONSE_CODES.REPEATED:
+                await message.react('🔄');
+                await message.reply({
+                    embeds: [new EmbedBuilder()
+                        .setDescription(`🔄 ${result.message || `"**${word}**" đã được sử dụng rồi!`}`)
+                        .setColor(0xFFA500)],
+                    allowedMentions: { repliedUser: false }
+                });
+                break;
+                
+            case RESPONSE_CODES.SAME_PLAYER:
+                await message.react('⏳');
+                await message.reply({
+                    embeds: [new EmbedBuilder()
+                        .setDescription(`⏳ Bạn không thể trả lời liên tiếp! Hãy đợi người khác.`)
+                        .setColor(0xFFA500)],
+                    allowedMentions: { repliedUser: false }
+                });
+                break;
+        }
     }
+    // RESPONSE_TYPES.INFO means game just started, ignore
 }

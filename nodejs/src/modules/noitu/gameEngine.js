@@ -149,13 +149,23 @@ export function processMove(gameData, playerWord, userId, isDM = false) {
         };
     }
 
-    let { word: currentWord, history = [], players = {}, mode = GAME_MODES.BOT } = gameData;
+    let { word: currentWord, history = [], players = {}, mode = GAME_MODES.BOT, lastPlayer = null } = gameData;
     let userStats = (isDM ? gameData : players[userId]) || {
         currentStreak: 0,
         bestStreak: 0,
         wins: 0,
         wrongCount: 0
     };
+
+    // Check if same player trying to play consecutively in PvP mode
+    if (!isDM && mode === GAME_MODES.PVP && lastPlayer === userId) {
+        return {
+            type: RESPONSE_TYPES.ERROR,
+            code: RESPONSE_CODES.SAME_PLAYER,
+            message: `Bạn không thể trả lời liên tiếp! Hãy đợi người khác.`,
+            currentWord: currentWord
+        };
+    }
 
     // Initialize game if no current word
     if (!currentWord) {
@@ -176,12 +186,86 @@ export function processMove(gameData, playerWord, userId, isDM = false) {
 
     // Validate word match
     if (!validateWordMatch(currentWord, playerWord)) {
-        return {
-            type: RESPONSE_TYPES.ERROR,
-            code: RESPONSE_CODES.MISMATCH,
-            message: `Từ đầu của bạn phải là **"${lastWord(currentWord)}"!** Vui lòng thử lại.`,
-            currentWord: currentWord
-        };
+        userStats.wrongCount = (userStats.wrongCount || 0) + 1;
+
+        if (userStats.wrongCount >= GAME_CONSTANTS.MAX_WRONG_COUNT) {
+            const preserved = {
+                bestStreak: userStats.bestStreak || 0,
+                wins: userStats.wins || 0
+            };
+
+            if (mode === GAME_MODES.PVP && !isDM) {
+                const newGameData = {
+                    word: currentWord,
+                    history: history,
+                    mode: mode,
+                    players: {
+                        ...players,
+                        [userId]: {
+                            currentStreak: 0,
+                            bestStreak: preserved.bestStreak,
+                            wins: preserved.wins,
+                            wrongCount: 0
+                        }
+                    }
+                };
+
+                return {
+                    type: RESPONSE_TYPES.ERROR,
+                    code: RESPONSE_CODES.MISMATCH,
+                    streakReset: true,
+                    message: `Chuỗi của <@${userId}> **bị reset** (sai từ bắt đầu).\nChuỗi đạt được: **${userStats.currentStreak}**, kỷ lục: **${userStats.bestStreak}**`,
+                    currentWord: currentWord,
+                    gameData: newGameData
+                };
+            }
+
+            const newWordVal = newWord();
+            const newGameData = {
+                word: newWordVal,
+                history: [],
+                mode: mode,
+                ...(isDM ? {
+                    currentStreak: 0,
+                    bestStreak: preserved.bestStreak,
+                    wins: preserved.wins,
+                    wrongCount: 0
+                } : {
+                    players: {
+                        ...players,
+                        [userId]: {
+                            currentStreak: 0,
+                            bestStreak: preserved.bestStreak,
+                            wins: preserved.wins,
+                            wrongCount: 0
+                        }
+                    }
+                })
+            };
+
+            return {
+                type: RESPONSE_TYPES.ERROR,
+                code: RESPONSE_CODES.MISMATCH,
+                message: `Thua cuộc, sai từ bắt đầu! Chuỗi: **${userStats.currentStreak}**, kỷ lục: **${userStats.bestStreak}**`,
+                currentWord: newWordVal,
+                gameData: newGameData
+            };
+        } else {
+            const newGameData = {
+                ...gameData,
+                ...(isDM ? { wrongCount: userStats.wrongCount } : {
+                    players: { ...players, [userId]: userStats }
+                })
+            };
+
+            return {
+                type: RESPONSE_TYPES.ERROR,
+                code: RESPONSE_CODES.MISMATCH,
+                message: `**Từ đầu của bạn phải là "${lastWord(currentWord)}"!** Bạn còn **${GAME_CONSTANTS.MAX_WRONG_COUNT - userStats.wrongCount}** lần đoán.`,
+                currentWord: currentWord,
+                gameData: newGameData
+            };
+        }
     }
 
     // Validate not repeated
@@ -417,7 +501,8 @@ function processValidMove(gameData, normalizedPlayer, userId, isDM) {
             word: normalizedPlayer,
             history: history,
             players: { ...players, [userId]: userStats },
-            mode: mode
+            mode: mode,
+            lastPlayer: userId
         };
 
         const statsLine = formatStatsLine(userId, {
