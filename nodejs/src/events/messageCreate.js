@@ -4,6 +4,8 @@ import { handleCountingMessage } from '../modules/countingLogic.js';
 import { checkChannel, checkUser, isChannelInGame, getChannelMode } from '../modules/noitu/index.js';
 import { getWordStartingWith, normalizeVietnamese } from '../modules/noitu/index.js';
 import { RESPONSE_CODES, RESPONSE_TYPES, GAME_MODES } from '../modules/noitu/constants.js';
+import { processWord, getMatchState, knockOutPlayer, abortMatch, checkTimeouts, checkAborts } from '../modules/wordchain/index.js';
+import { GAME_CONSTANTS, REACTIONS, RESPONSE_CODES as WC_CODES, GAME_STATUS } from '../modules/wordchain/constants.js';
 
 export const name = Events.MessageCreate;
 export const once = false;
@@ -15,8 +17,11 @@ export async function execute(message) {
     // Handle counting messages first
     await handleCountingMessage(message);
 
-    // Handle noitu game messages
+    // Handle noitu game messages (Vietnamese)
     await handleNoituMessage(message);
+
+    // Handle English Word Chain messages
+    await handleWordChainMessage(message);
 
     // Check if message is in a quarantine channel
     if (message.guild && isQuarantineChannel(message.guild.id, message.channel.id)) {
@@ -316,4 +321,70 @@ async function handleNoituChannel(message) {
         }
     }
     // RESPONSE_TYPES.INFO means game just started, ignore
+}
+
+/**
+ * Handle English Word Chain game messages
+ */
+async function handleWordChainMessage(message) {
+    // Only process messages starting with ;
+    if (!message.content.startsWith(GAME_CONSTANTS.PREFIX)) return;
+    
+    // Only in guilds
+    if (!message.guild) return;
+
+    // Get the word (remove prefix)
+    const word = message.content.slice(1).trim().toLowerCase();
+    
+    // Must be a single word
+    if (!word || word.includes(' ')) return;
+
+    // Check if there's an active match in this channel
+    const match = getMatchState(message.channel.id);
+    if (!match || match.status === GAME_STATUS.ENDED) return;
+
+    // Process the word
+    const result = await processWord(message.channel.id, message.author.id, word);
+
+    if (!result.success) {
+        if (!result.code) return; // Player not in game, ignore
+
+        switch (result.code) {
+            case WC_CODES.NOT_YOUR_TURN:
+                await message.react(REACTIONS.NOT_YOUR_TURN);
+                break;
+
+            case WC_CODES.NOT_ENOUGH_PLAYERS:
+                for (const reaction of REACTIONS.NOT_ENOUGH_PLAYERS) {
+                    await message.react(reaction);
+                }
+                break;
+
+            case WC_CODES.WRONG_LETTER:
+                await message.react(REACTIONS.WRONG_LETTER);
+                break;
+
+            case WC_CODES.REPEATED:
+                await message.react(REACTIONS.REPEATED);
+                break;
+
+            case WC_CODES.INVALID_WORD:
+                await message.react(REACTIONS.INVALID_WORD);
+                break;
+        }
+        return;
+    }
+
+    // Valid word!
+    await message.react(REACTIONS.VALID);
+
+    // Send next turn embed
+    const embed = new EmbedBuilder()
+        .setTitle(`${result.nextPlayer.name}'s turn!`)
+        .addFields({ name: 'Previous Word', value: result.lastWord })
+        .setColor(0x5865F2)
+        .setFooter({ text: `Turn ${result.turnNumber} • Next word must start with "${result.lastWord.slice(-1)}"` })
+        .setTimestamp();
+
+    await message.channel.send({ embeds: [embed] });
 }
