@@ -95,9 +95,12 @@ export async function tratu(word) {
     }
 
     try {
+        console.log(`[tratu] Fetching: https://minhqnd.com/api/dictionary/lookup?word=${encodeURIComponent(trimmedWord)}`);
         const response = await fetch(`https://minhqnd.com/api/dictionary/lookup?word=${encodeURIComponent(trimmedWord)}`);
+        console.log(`[tratu] Response status: ${response.status}`);
         if (response.ok) {
             const data = await response.json();
+            console.log(`[tratu] Data exists: ${data.exists}, meanings: ${data.meanings?.length || 0}`);
             if (data.error || !data.meanings || data.meanings.length === 0) {
                 return `Không tìm thấy định nghĩa cho từ "${trimmedWord}", đây có thể là một từ ghép hán việt, vui lòng tra cứu ở các nguồn khác.`;
             }
@@ -119,9 +122,11 @@ export async function tratu(word) {
 
             return `**Từ tra cứu: "${data.word || trimmedWord}"**\n\n${formatted.trim()}`;
         } else {
+            console.error(`[tratu] API returned non-OK status: ${response.status}`);
             return "Không thể lấy dữ liệu từ API";
         }
     } catch (error) {
+        console.error(`[tratu] Fetch error:`, error);
         return "Không thể lấy dữ liệu từ API";
     }
 }

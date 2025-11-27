@@ -1,0 +1,50 @@
+{
+  "matches": {
+    "1378923229628076113": {
+      "channelId": "1378923229628076113",
+      "status": "ended",
+      "players": [
+        {
+          "id": "743031064997658647",
+          "name": "mancoo manun",
+          "points": 3,
+          "wordsPlayed": 1,
+          "isOut": false
+        },
+        {
+          "id": "1061297130096046131",
+          "name": "Quang Thanh",
+          "points": 0,
+          "wordsPlayed": 0,
+          "isOut": true
+        }
+      ],
+      "currentPlayerIndex": 1,
+      "lastWord": "can",
+      "lastLetter": "n",
+      "usedWords": [
+        "can"
+      ],
+      "turnNumber": 2,
+      "startedAt": 1764136768666,
+      "lastTurnAt": 1764136845082
+    }
+  },
+  "players": {
+    "1061297130096046131": {
+      "gamesPlayed": 2,
+      "gamesWon": 1,
+      "totalWords": 1,
+      "totalPoints": 3,
+      "bestStreak": 1
+    },
+    "743031064997658647": {
+      "gamesPlayed": 2,
+      "gamesWon": 1,
+      "totalWords": 1,
+      "totalPoints": 3,
+      "bestStreak": 1
+    }
+  },
+  "history": []
+}
