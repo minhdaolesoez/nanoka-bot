@@ -1,5 +1,7 @@
 # Nanoka Bot
 
+> 📖 **Language:** [English](#) | [Tiếng Việt](./README.vi.md)
+
 A Discord moderation bot with warnings, quarantine, counting, Vietnamese word chain game, and English word chain game features.
 
 ## Features
