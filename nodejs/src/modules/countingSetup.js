@@ -1,77 +1,38 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
 import { EmbedBuilder, ChannelType, PermissionFlagsBits } from 'discord.js';
+import { createStore } from '../utils/database.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const COUNTING_FILE = join(__dirname, '..', '..', '..', 'data', 'counting_channels.json');
-
-function ensureDataDir() {
-    const dataDir = dirname(COUNTING_FILE);
-    if (!existsSync(dataDir)) {
-        mkdirSync(dataDir, { recursive: true });
-    }
-}
+// Create store with caching and debounced writes
+const store = createStore('counting_channels', {});
 
 /**
- * Initialize counting file if it doesn't exist
+ * Initialize counting file (no-op, handled by store)
  */
 export function initializeCountingFile() {
-    ensureDataDir();
-    if (!existsSync(COUNTING_FILE)) {
-        try {
-            writeFileSync(COUNTING_FILE, JSON.stringify({}, null, 2));
-            console.log(`File created: ${COUNTING_FILE} initialized with {}.`);
-        } catch (error) {
-            console.error(`Error creating file ${COUNTING_FILE}:`, error);
-        }
-    }
+    // No-op: store handles initialization automatically
 }
 
 /**
- * Load counting channels data from JSON file
+ * Load counting channels data (returns cached data)
  */
 export function loadCountingChannels() {
-    ensureDataDir();
-    
-    if (!existsSync(COUNTING_FILE)) {
-        return {};
-    }
-
-    try {
-        const data = readFileSync(COUNTING_FILE, 'utf8');
-        if (!data.trim()) {
-            return {};
-        }
-        return JSON.parse(data);
-    } catch (error) {
-        if (error instanceof SyntaxError) {
-            console.log(`Warning: Counting data file found but is empty or corrupt. Starting with empty data: ${COUNTING_FILE}`);
-            return {};
-        }
-        throw error;
-    }
+    return store.data;
 }
 
 /**
- * Save counting channels data to JSON file
+ * Save counting channels data (schedules debounced write)
  */
-export function saveCountingChannels(countingData) {
-    ensureDataDir();
-    writeFileSync(COUNTING_FILE, JSON.stringify(countingData, null, 2));
+export function saveCountingChannels() {
+    store.save();
 }
 
 /**
- * Add a channel as counting channel for a guild
+ * Ensure guild data structure exists
  */
-export function addCountingChannel(guildId, channelId) {
-    const countingData = loadCountingChannels();
+function ensureGuildData(guildId) {
     const guildStr = String(guildId);
-
-    if (!countingData[guildStr]) {
-        countingData[guildStr] = {
+    
+    if (!store.data[guildStr]) {
+        store.data[guildStr] = {
             channel_id: null,
             current_number: 0,
             last_user_id: null,
@@ -80,9 +41,17 @@ export function addCountingChannel(guildId, channelId) {
             user_stats: {}
         };
     }
+    
+    return store.data[guildStr];
+}
 
-    countingData[guildStr].channel_id = channelId;
-    saveCountingChannels(countingData);
+/**
+ * Add a channel as counting channel for a guild
+ */
+export function addCountingChannel(guildId, channelId) {
+    const guildData = ensureGuildData(guildId);
+    guildData.channel_id = channelId;
+    store.save();
     return true;
 }
 
@@ -90,11 +59,10 @@ export function addCountingChannel(guildId, channelId) {
  * Get the counting channel for a guild
  */
 export function getCountingChannel(guildId) {
-    const countingData = loadCountingChannels();
     const guildStr = String(guildId);
 
-    if (countingData[guildStr]) {
-        return countingData[guildStr].channel_id;
+    if (store.data[guildStr]) {
+        return store.data[guildStr].channel_id;
     }
     return null;
 }
@@ -103,11 +71,10 @@ export function getCountingChannel(guildId) {
  * Check if a channel is the counting channel for a guild
  */
 export function isCountingChannel(guildId, channelId) {
-    const countingData = loadCountingChannels();
     const guildStr = String(guildId);
 
-    if (countingData[guildStr]) {
-        return countingData[guildStr].channel_id === channelId;
+    if (store.data[guildStr]) {
+        return store.data[guildStr].channel_id === channelId;
     }
     return false;
 }

@@ -1,99 +1,69 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { createStore } from '../utils/database.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Create store with caching and debounced writes
+const store = createStore('quarantine_channels', {});
 
-const QUARANTINE_FILE = join(__dirname, '..', '..', '..', 'data', 'quarantine_channels.json');
-
-function ensureDataDir() {
-    const dataDir = dirname(QUARANTINE_FILE);
-    if (!existsSync(dataDir)) {
-        mkdirSync(dataDir, { recursive: true });
+/**
+ * Ensure guild data structure exists and is in new format
+ */
+function ensureGuildData(guildId) {
+    const guildStr = String(guildId);
+    
+    if (!store.data[guildStr]) {
+        store.data[guildStr] = {
+            channels: [],
+            log_channel: null,
+            ban_count: 0,
+        };
+    } else if (Array.isArray(store.data[guildStr])) {
+        // Convert old format to new format
+        store.data[guildStr] = {
+            channels: store.data[guildStr],
+            log_channel: null,
+            ban_count: 0,
+        };
     }
+    
+    return store.data[guildStr];
 }
 
 /**
- * Load quarantine channels data from JSON file
+ * Load quarantine channels data (returns cached data)
  */
 export function loadQuarantineChannels() {
-    ensureDataDir();
-    
-    if (!existsSync(QUARANTINE_FILE)) {
-        try {
-            writeFileSync(QUARANTINE_FILE, JSON.stringify({}, null, 2));
-            console.log(`File created: ${QUARANTINE_FILE} initialized with {}.`);
-            return {};
-        } catch (error) {
-            console.error(`Error creating file ${QUARANTINE_FILE}:`, error);
-            return {};
-        }
-    }
-
-    try {
-        const data = readFileSync(QUARANTINE_FILE, 'utf8');
-        if (!data.trim()) {
-            writeFileSync(QUARANTINE_FILE, JSON.stringify({}, null, 2));
-            return {};
-        }
-        return JSON.parse(data);
-    } catch (error) {
-        if (error instanceof SyntaxError) {
-            console.log('Warning: Quarantine data file is corrupt. Overwriting with empty data.');
-            writeFileSync(QUARANTINE_FILE, JSON.stringify({}, null, 2));
-            return {};
-        }
-        throw error;
-    }
+    return store.data;
 }
 
 /**
- * Save quarantine channels data to JSON file
+ * Save quarantine channels data (schedules debounced write)
  */
-export function saveQuarantineChannels(quarantineData) {
-    ensureDataDir();
-    writeFileSync(QUARANTINE_FILE, JSON.stringify(quarantineData, null, 2));
+export function saveQuarantineChannels() {
+    store.save();
 }
 
 /**
  * Increment the auto-ban counter for a guild
  */
 export function incrementBanCounter(guildId) {
-    const quarantineData = loadQuarantineChannels();
-    const guildStr = String(guildId);
-
-    if (!quarantineData[guildStr]) {
-        quarantineData[guildStr] = {
-            channels: [],
-            log_channel: null,
-            ban_count: 0,
-        };
-    } else if (Array.isArray(quarantineData[guildStr])) {
-        // Convert old format to new format
-        quarantineData[guildStr] = {
-            channels: quarantineData[guildStr],
-            log_channel: null,
-            ban_count: 0,
-        };
-    } else if (!('ban_count' in quarantineData[guildStr])) {
-        quarantineData[guildStr].ban_count = 0;
+    const guildData = ensureGuildData(guildId);
+    
+    if (!('ban_count' in guildData)) {
+        guildData.ban_count = 0;
     }
 
-    quarantineData[guildStr].ban_count += 1;
-    saveQuarantineChannels(quarantineData);
-    return quarantineData[guildStr].ban_count;
+    guildData.ban_count += 1;
+    store.save();
+    return guildData.ban_count;
 }
 
 /**
  * Get the current auto-ban count for a guild
  */
 export function getBanCount(guildId) {
-    const quarantineData = loadQuarantineChannels();
     const guildStr = String(guildId);
 
-    if (quarantineData[guildStr] && typeof quarantineData[guildStr] === 'object') {
-        return quarantineData[guildStr].ban_count || 0;
+    if (store.data[guildStr] && typeof store.data[guildStr] === 'object') {
+        return store.data[guildStr].ban_count || 0;
     }
     return 0;
 }
@@ -102,32 +72,20 @@ export function getBanCount(guildId) {
  * Set the log channel for a guild
  */
 export function setLogChannel(guildId, channelId) {
-    const quarantineData = loadQuarantineChannels();
-    const guildStr = String(guildId);
-
-    if (!quarantineData[guildStr]) {
-        quarantineData[guildStr] = { channels: [], log_channel: null };
-    } else if (Array.isArray(quarantineData[guildStr])) {
-        quarantineData[guildStr] = {
-            channels: quarantineData[guildStr],
-            log_channel: null,
-        };
-    }
-
-    quarantineData[guildStr].log_channel = channelId;
-    saveQuarantineChannels(quarantineData);
+    const guildData = ensureGuildData(guildId);
+    guildData.log_channel = channelId;
+    store.save();
 }
 
 /**
  * Get the log channel for a guild
  */
 export function getLogChannel(guildId) {
-    const quarantineData = loadQuarantineChannels();
     const guildStr = String(guildId);
 
-    if (quarantineData[guildStr]) {
-        if (typeof quarantineData[guildStr] === 'object' && !Array.isArray(quarantineData[guildStr])) {
-            return quarantineData[guildStr].log_channel;
+    if (store.data[guildStr]) {
+        if (typeof store.data[guildStr] === 'object' && !Array.isArray(store.data[guildStr])) {
+            return store.data[guildStr].log_channel;
         }
     }
     return null;
@@ -137,21 +95,11 @@ export function getLogChannel(guildId) {
  * Add a channel as quarantine channel for a guild
  */
 export function addQuarantineChannel(guildId, channelId) {
-    const quarantineData = loadQuarantineChannels();
-    const guildStr = String(guildId);
+    const guildData = ensureGuildData(guildId);
 
-    if (!quarantineData[guildStr]) {
-        quarantineData[guildStr] = { channels: [], log_channel: null };
-    } else if (Array.isArray(quarantineData[guildStr])) {
-        quarantineData[guildStr] = {
-            channels: quarantineData[guildStr],
-            log_channel: null,
-        };
-    }
-
-    if (!quarantineData[guildStr].channels.includes(channelId)) {
-        quarantineData[guildStr].channels.push(channelId);
-        saveQuarantineChannels(quarantineData);
+    if (!guildData.channels.includes(channelId)) {
+        guildData.channels.push(channelId);
+        store.save();
         return true;
     }
     return false;
@@ -161,14 +109,13 @@ export function addQuarantineChannel(guildId, channelId) {
  * Check if a channel is a quarantine channel
  */
 export function isQuarantineChannel(guildId, channelId) {
-    const quarantineData = loadQuarantineChannels();
     const guildStr = String(guildId);
 
-    if (quarantineData[guildStr]) {
-        if (typeof quarantineData[guildStr] === 'object' && !Array.isArray(quarantineData[guildStr])) {
-            return quarantineData[guildStr].channels.includes(channelId);
-        } else if (Array.isArray(quarantineData[guildStr])) {
-            return quarantineData[guildStr].includes(channelId);
+    if (store.data[guildStr]) {
+        if (typeof store.data[guildStr] === 'object' && !Array.isArray(store.data[guildStr])) {
+            return store.data[guildStr].channels.includes(channelId);
+        } else if (Array.isArray(store.data[guildStr])) {
+            return store.data[guildStr].includes(channelId);
         }
     }
     return false;

@@ -1,92 +1,63 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { createStore } from '../../utils/database.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Default data structure
+const DEFAULT_DATA = {
+    channels: {},
+    users: {},
+    channelAllowlist: []
+};
 
-const NOITU_FILE = join(__dirname, '..', '..', '..', 'data', 'noitu_data.json');
-
-function ensureDataDir() {
-    const dataDir = dirname(NOITU_FILE);
-    if (!existsSync(dataDir)) {
-        mkdirSync(dataDir, { recursive: true });
-    }
-}
-
-function getDefaultData() {
-    return {
-        channels: {},
-        users: {},
-        channelAllowlist: []
-    };
-}
+// Create store with caching and debounced writes
+const store = createStore('noitu_data', DEFAULT_DATA);
 
 /**
- * Load noitu data from JSON file
+ * Load noitu data (returns cached data)
  */
 export function loadNoituData() {
-    ensureDataDir();
-
-    if (!existsSync(NOITU_FILE)) {
-        const defaultData = getDefaultData();
-        writeFileSync(NOITU_FILE, JSON.stringify(defaultData, null, 2));
-        return defaultData;
-    }
-
-    try {
-        const data = readFileSync(NOITU_FILE, 'utf8');
-        if (!data.trim()) {
-            return getDefaultData();
-        }
-        return JSON.parse(data);
-    } catch (error) {
-        console.error('Error loading noitu data:', error);
-        return getDefaultData();
-    }
+    return store.data;
 }
 
 /**
- * Save noitu data to JSON file
+ * Save noitu data (schedules debounced write)
  */
-export function saveNoituData(data) {
-    ensureDataDir();
-    writeFileSync(NOITU_FILE, JSON.stringify(data, null, 2));
+export function saveNoituData() {
+    store.save();
 }
 
 /**
  * Read specific key from data
  */
 export function read(key) {
-    const data = loadNoituData();
-    return data[key];
+    return store.data[key];
 }
 
 /**
  * Store/update specific key in data
  */
-export function store(key, newData) {
-    const data = loadNoituData();
+export function storeData(key, newData) {
+    const data = store.data;
     if (!data[key] || typeof data[key] !== 'object') {
         data[key] = {};
     }
     Object.assign(data[key], newData);
-    saveNoituData(data);
+    store.save();
 }
+
+// Re-export as 'store' for backwards compatibility
+export { storeData as store };
 
 /**
  * Get all data
  */
 export function getAll() {
-    return loadNoituData();
+    return store.data;
 }
 
 /**
  * Check if channel is in allowlist
  */
 export function isNoituChannel(channelId) {
-    const data = loadNoituData();
-    return data.channelAllowlist.includes(String(channelId));
+    return store.data.channelAllowlist.includes(String(channelId));
 }
 
 /**
@@ -100,11 +71,11 @@ export function isChannelInGame(channelId) {
  * Add channel to allowlist
  */
 export function addNoituChannel(channelId) {
-    const data = loadNoituData();
+    const data = store.data;
     const channelStr = String(channelId);
     if (!data.channelAllowlist.includes(channelStr)) {
         data.channelAllowlist.push(channelStr);
-        saveNoituData(data);
+        store.save();
         return true;
     }
     return false;
@@ -114,7 +85,7 @@ export function addNoituChannel(channelId) {
  * Remove channel from allowlist
  */
 export function removeNoituChannel(channelId) {
-    const data = loadNoituData();
+    const data = store.data;
     const channelStr = String(channelId);
     const index = data.channelAllowlist.indexOf(channelStr);
     if (index !== -1) {
@@ -123,7 +94,7 @@ export function removeNoituChannel(channelId) {
         if (data.channels && data.channels[channelStr]) {
             delete data.channels[channelStr];
         }
-        saveNoituData(data);
+        store.save();
         return true;
     }
     return false;
@@ -133,7 +104,7 @@ export function removeNoituChannel(channelId) {
  * Get channel mode (bot or pvp)
  */
 export function getChannelMode(channelId) {
-    const data = loadNoituData();
+    const data = store.data;
     const channelStr = String(channelId);
     if (data.channels && data.channels[channelStr]) {
         return data.channels[channelStr].mode || 'bot';
@@ -145,12 +116,12 @@ export function getChannelMode(channelId) {
  * Set channel mode
  */
 export function setChannelMode(channelId, mode) {
-    const data = loadNoituData();
+    const data = store.data;
     const channelStr = String(channelId);
     if (!data.channels) data.channels = {};
     if (!data.channels[channelStr]) {
         data.channels[channelStr] = {};
     }
     data.channels[channelStr].mode = mode;
-    saveNoituData(data);
+    store.save();
 }

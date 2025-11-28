@@ -1,92 +1,58 @@
-// English Word Chain Database (JSON file storage)
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+// English Word Chain Database
+import { createStore } from '../../utils/database.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Default data structure
+const DEFAULT_DATA = {
+    matches: {},      // Active matches by channelId
+    players: {},      // Player stats by playerId
+    history: []       // Match history
+};
 
-const WORDCHAIN_FILE = join(__dirname, '..', '..', '..', 'data', 'wordchain_data.json');
-
-function ensureDataDir() {
-    const dataDir = dirname(WORDCHAIN_FILE);
-    if (!existsSync(dataDir)) {
-        mkdirSync(dataDir, { recursive: true });
-    }
-}
-
-function getDefaultData() {
-    return {
-        matches: {},      // Active matches by channelId
-        players: {},      // Player stats by odayerId
-        history: []       // Match history
-    };
-}
+// Create store with caching and debounced writes
+const store = createStore('wordchain_data', DEFAULT_DATA);
 
 /**
- * Load wordchain data from JSON file
+ * Load wordchain data (returns cached data)
  */
 export function loadData() {
-    ensureDataDir();
-
-    if (!existsSync(WORDCHAIN_FILE)) {
-        const defaultData = getDefaultData();
-        writeFileSync(WORDCHAIN_FILE, JSON.stringify(defaultData, null, 2));
-        return defaultData;
-    }
-
-    try {
-        const data = readFileSync(WORDCHAIN_FILE, 'utf8');
-        if (!data.trim()) {
-            return getDefaultData();
-        }
-        return JSON.parse(data);
-    } catch (error) {
-        console.error('Error loading wordchain data:', error);
-        return getDefaultData();
-    }
+    return store.data;
 }
 
 /**
- * Save wordchain data to JSON file
+ * Save wordchain data (schedules debounced write)
  */
-export function saveData(data) {
-    ensureDataDir();
-    writeFileSync(WORDCHAIN_FILE, JSON.stringify(data, null, 2));
+export function saveData() {
+    store.save();
 }
 
 /**
  * Get match by channel ID
  */
 export function getMatch(channelId) {
-    const data = loadData();
-    return data.matches[String(channelId)] || null;
+    return store.data.matches[String(channelId)] || null;
 }
 
 /**
  * Save/update match
  */
 export function saveMatch(channelId, match) {
-    const data = loadData();
-    data.matches[String(channelId)] = match;
-    saveData(data);
+    store.data.matches[String(channelId)] = match;
+    store.save();
 }
 
 /**
  * Delete match
  */
 export function deleteMatch(channelId) {
-    const data = loadData();
-    delete data.matches[String(channelId)];
-    saveData(data);
+    delete store.data.matches[String(channelId)];
+    store.save();
 }
 
 /**
  * Get player stats
  */
 export function getPlayer(playerId) {
-    const data = loadData();
-    return data.players[String(playerId)] || {
+    return store.data.players[String(playerId)] || {
         gamesPlayed: 0,
         gamesWon: 0,
         totalWords: 0,
@@ -99,10 +65,9 @@ export function getPlayer(playerId) {
  * Update player stats
  */
 export function updatePlayer(playerId, updates) {
-    const data = loadData();
     const playerStr = String(playerId);
-    if (!data.players[playerStr]) {
-        data.players[playerStr] = {
+    if (!store.data.players[playerStr]) {
+        store.data.players[playerStr] = {
             gamesPlayed: 0,
             gamesWon: 0,
             totalWords: 0,
@@ -110,14 +75,13 @@ export function updatePlayer(playerId, updates) {
             bestStreak: 0
         };
     }
-    Object.assign(data.players[playerStr], updates);
-    saveData(data);
+    Object.assign(store.data.players[playerStr], updates);
+    store.save();
 }
 
 /**
  * Get all active matches
  */
 export function getAllMatches() {
-    const data = loadData();
-    return data.matches;
+    return store.data.matches;
 }

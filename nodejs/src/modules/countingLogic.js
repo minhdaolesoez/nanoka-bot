@@ -22,7 +22,7 @@ export async function handleCountingMessage(message) {
     
     if (!isCountingChannel(message.guild.id, message.channel.id)) return;
 
-    // Load counting data
+    // Get counting data (now returns cached reference)
     const countingData = loadCountingChannels();
     const guildStr = String(message.guild.id);
 
@@ -37,7 +37,7 @@ export async function handleCountingMessage(message) {
         // Reset counting
         guildData.current_number = 0;
         guildData.last_user_id = null;
-        saveCountingChannels(countingData);
+        saveCountingChannels();
 
         const embed = new EmbedBuilder()
             .setTitle('🔄 Counting Reset!')
@@ -104,15 +104,14 @@ export async function handleCountingMessage(message) {
         }
 
         // Update user stats
-        const userStats = guildData.user_stats || {};
+        if (!guildData.user_stats) guildData.user_stats = {};
         const userIdStr = String(message.author.id);
-        if (!userStats[userIdStr]) {
-            userStats[userIdStr] = { correct: 0, failed: 0 };
+        if (!guildData.user_stats[userIdStr]) {
+            guildData.user_stats[userIdStr] = { correct: 0, failed: 0 };
         }
-        userStats[userIdStr].correct += 1;
-        guildData.user_stats = userStats;
+        guildData.user_stats[userIdStr].correct += 1;
 
-        saveCountingChannels(countingData);
+        saveCountingChannels();
 
     } else {
         // Wrong number or same user - send warning but don't reset!
@@ -140,15 +139,14 @@ export async function handleCountingMessage(message) {
         }
 
         // Update user stats (failed attempt)
-        const userStats = guildData.user_stats || {};
+        if (!guildData.user_stats) guildData.user_stats = {};
         const userIdStr = String(message.author.id);
-        if (!userStats[userIdStr]) {
-            userStats[userIdStr] = { correct: 0, failed: 0 };
+        if (!guildData.user_stats[userIdStr]) {
+            guildData.user_stats[userIdStr] = { correct: 0, failed: 0 };
         }
-        userStats[userIdStr].failed += 1;
-        guildData.user_stats = userStats;
+        guildData.user_stats[userIdStr].failed += 1;
 
-        saveCountingChannels(countingData);
+        saveCountingChannels();
     }
 }
 
