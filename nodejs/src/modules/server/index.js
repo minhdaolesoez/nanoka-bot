@@ -294,12 +294,15 @@ export function createDebianEmbed(stats) {
         });
     }
 
-    // RAM Info
+    // RAM Info - calculate percentage from usedBytes and total size
     if (info.ram && data.ram) {
-        const totalRam = info.ram.size ? `${(info.ram.size / 1024 / 1024 / 1024).toFixed(1)} GB` : 'Unknown';
+        const totalBytes = info.ram.size || 1;
+        const usedBytes = data.ram.usedBytes || 0;
+        const usedPercent = ((usedBytes / totalBytes) * 100).toFixed(1);
+        const totalRam = `${(totalBytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
         embed.addFields({
             name: `${ICONS.RAM} RAM`,
-            value: `${data.ram.usedPercent}% of ${totalRam}`,
+            value: `${usedPercent}% of ${totalRam}`,
             inline: true
         });
     }
@@ -318,7 +321,7 @@ export function createDebianEmbed(stats) {
         });
     }
 
-    // Network Info
+    // Network Info (real-time)
     if (data.network) {
         embed.addFields({
             name: 'Network',

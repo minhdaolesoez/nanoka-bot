@@ -105,13 +105,11 @@ export class DashdotClient {
         const load = result.data;
         
         // Calculate average CPU usage from all cores
+        // API returns: [{load: X, temp: Y, core: Z}, ...]
         let avgUsage = 0;
         if (Array.isArray(load) && load.length > 0) {
-            // load is an array of core usages
-            const lastEntry = load[load.length - 1];
-            if (lastEntry && Array.isArray(lastEntry)) {
-                avgUsage = lastEntry.reduce((a, b) => a + b, 0) / lastEntry.length;
-            }
+            const totalLoad = load.reduce((sum, core) => sum + (core.load || 0), 0);
+            avgUsage = totalLoad / load.length;
         }
 
         return {
@@ -135,17 +133,16 @@ export class DashdotClient {
         }
 
         const load = result.data;
-        let usedPercent = 0;
         
-        if (Array.isArray(load) && load.length > 0) {
-            usedPercent = load[load.length - 1];
-        }
+        // API returns: {load: bytes_used}
+        // We need to get total RAM from /info to calculate percentage
+        const usedBytes = load?.load || 0;
 
         return {
             code: RESPONSE_CODES.OK,
             data: {
                 raw: load,
-                usedPercent: usedPercent.toFixed(1)
+                usedBytes: usedBytes
             }
         };
     }
@@ -179,17 +176,10 @@ export class DashdotClient {
         }
 
         const load = result.data;
-        let down = 0, up = 0;
         
-        if (load && typeof load === 'object') {
-            // Get the latest values
-            if (Array.isArray(load.down) && load.down.length > 0) {
-                down = load.down[load.down.length - 1];
-            }
-            if (Array.isArray(load.up) && load.up.length > 0) {
-                up = load.up[load.up.length - 1];
-            }
-        }
+        // API returns: {up: bytes/s, down: bytes/s}
+        const down = load?.down || 0;
+        const up = load?.up || 0;
 
         return {
             code: RESPONSE_CODES.OK,
