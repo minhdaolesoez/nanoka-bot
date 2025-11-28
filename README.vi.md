@@ -19,21 +19,27 @@ Bot Discord hỗ trợ quản lý server với các tính năng: cảnh cáo, c�
 - `/setupcounting [channel] [category]` - Thiết lập kênh đếm số
 - `/countingstats [user]` - Xem thống kê đếm số
 
-### Lệnh Game Nối Từ (Tiếng Việt)
-- `/noitu_add [channel]` - Thêm kênh chơi Nối Từ
-- `/noitu_remove` - Xóa kênh hiện tại khỏi game
-- `/noitu_mode <mode>` - Chuyển chế độ chơi (bot vs pvp)
-- `/newgame` - Reset và bắt đầu game mới
-- `/stats` - Xem thống kê của bạn
-- `/tratu <word>` - Tra từ điển tiếng Việt
-- `/noitu_help` - Hiển thị luật chơi và các lệnh
+### Nối Từ - Game Tiếng Việt (`/noituvi`)
+- `/noituvi add [channel]` - Thêm kênh chơi Nối Từ
+- `/noituvi remove` - Xóa kênh hiện tại khỏi game
+- `/noituvi mode <mode>` - Chuyển chế độ chơi (bot vs pvp)
+- `/noituvi newgame` - Reset và bắt đầu game mới
+- `/noituvi stats` - Xem thống kê của bạn
+- `/noituvi lookup <word>` - Tra từ điển tiếng Việt
+- `/noituvi help` - Hiển thị luật chơi và các lệnh
 
-### Lệnh Word Chain (Tiếng Anh)
-- `/wc_start` - Bắt đầu trận Word Chain
-- `/wc_join` - Tham gia trận đang diễn ra
-- `/wc_define <word>` - Tra nghĩa từ tiếng Anh
-- `/wc_stats [user]` - Xem thống kê người chơi
-- `/wc_help` - Hiển thị luật chơi và các lệnh
+### Word Chain - Game Tiếng Anh (`/noituen`)
+- `/noituen start` - Bắt đầu trận Word Chain
+- `/noituen join` - Tham gia trận đang diễn ra
+- `/noituen define <word>` - Tra nghĩa từ tiếng Anh
+- `/noituen stats [user]` - Xem thống kê người chơi
+- `/noituen help` - Hiển thị luật chơi và các lệnh
+
+### Giám Sát Server (`/server`)
+- `/server status` - Xem trạng thái tất cả server (Minecraft + Debian)
+- `/server list` - Liệt kê các server Minecraft
+- `/server minecraft <server>` - Xem chi tiết server Minecraft
+- `/server command <server> <command>` - Gửi lệnh đến server Minecraft
 
 ### Hệ Thống Cảnh Cáo
 - Lần 1: Chỉ cảnh cáo
@@ -131,18 +137,9 @@ nodejs/
     │   ├── setuplog.js
     │   ├── setupcounting.js
     │   ├── countingstats.js
-    │   ├── noitu_add.js
-    │   ├── noitu_remove.js
-    │   ├── noitu_mode.js
-    │   ├── newgame.js
-    │   ├── stats.js
-    │   ├── tratu.js
-    │   ├── noitu_help.js
-    │   ├── wc_start.js
-    │   ├── wc_join.js
-    │   ├── wc_define.js
-    │   ├── wc_stats.js
-    │   └── wc_help.js
+    │   ├── noituvi.js        # Nối Từ tiếng Việt (gộp)
+    │   ├── noituen.js        # Word Chain tiếng Anh (gộp)
+    │   └── server.js         # Giám sát server (Crafty + Dashdot)
     ├── events/               # Discord event handlers
     │   ├── ready.js
     │   ├── interactionCreate.js
@@ -161,11 +158,16 @@ nodejs/
         │   ├── gameEngine.js
         │   ├── gameLogic.js
         │   └── wordProcessing.js
-        └── wordchain/        # Game word chain tiếng Anh
+        ├── wordchain/        # Game word chain tiếng Anh
+        │   ├── index.js
+        │   ├── constants.js
+        │   ├── db.js
+        │   └── gameEngine.js
+        └── server/           # Giám sát server
             ├── index.js
             ├── constants.js
-            ├── db.js
-            └── gameEngine.js
+            ├── craftyClient.js   # Minecraft (Crafty Controller)
+            └── dashdotClient.js  # Debian (Dashdot)
 ```
 
 ## Lưu Trữ Dữ Liệu

@@ -19,21 +19,27 @@ A Discord moderation bot with warnings, quarantine, counting, Vietnamese word ch
 - `/setupcounting [channel] [category]` - Setup a counting channel
 - `/countingstats [user]` - View counting statistics
 
-### Nối Từ (Vietnamese Word Chain Game) Commands
-- `/noitu_add [channel]` - Add a channel to play Nối Từ
-- `/noitu_remove` - Remove current channel from the game
-- `/noitu_mode <mode>` - Switch game mode (bot vs pvp)
-- `/newgame` - Reset and start a new game
-- `/stats` - View your game statistics
-- `/tratu <word>` - Look up word in Vietnamese dictionary
-- `/noitu_help` - Show game rules and commands
+### Nối Từ - Vietnamese Word Chain (`/noituvi`)
+- `/noituvi add [channel]` - Add a channel to play Nối Từ
+- `/noituvi remove` - Remove current channel from the game
+- `/noituvi mode <mode>` - Switch game mode (bot vs pvp)
+- `/noituvi newgame` - Reset and start a new game
+- `/noituvi stats` - View your game statistics
+- `/noituvi lookup <word>` - Look up word in Vietnamese dictionary
+- `/noituvi help` - Show game rules and commands
 
-### English Word Chain Commands
-- `/wc_start` - Start an English Word Chain match
-- `/wc_join` - Join an ongoing match
-- `/wc_define <word>` - Look up word definition
-- `/wc_stats [user]` - View player statistics
-- `/wc_help` - Show game rules and commands
+### English Word Chain (`/noituen`)
+- `/noituen start` - Start an English Word Chain match
+- `/noituen join` - Join an ongoing match
+- `/noituen define <word>` - Look up word definition
+- `/noituen stats [user]` - View player statistics
+- `/noituen help` - Show game rules and commands
+
+### Server Monitoring (`/server`)
+- `/server status` - View all server statuses (Minecraft + Debian)
+- `/server list` - List all Minecraft servers
+- `/server minecraft <server>` - View specific Minecraft server stats
+- `/server command <server> <command>` - Send command to Minecraft server
 
 ### Warning System
 - 1st warning: Warning only
@@ -131,18 +137,9 @@ nodejs/
     │   ├── setuplog.js
     │   ├── setupcounting.js
     │   ├── countingstats.js
-    │   ├── noitu_add.js
-    │   ├── noitu_remove.js
-    │   ├── noitu_mode.js
-    │   ├── newgame.js
-    │   ├── stats.js
-    │   ├── tratu.js
-    │   ├── noitu_help.js
-    │   ├── wc_start.js
-    │   ├── wc_join.js
-    │   ├── wc_define.js
-    │   ├── wc_stats.js
-    │   └── wc_help.js
+    │   ├── noituvi.js        # Vietnamese Word Chain (consolidated)
+    │   ├── noituen.js        # English Word Chain (consolidated)
+    │   └── server.js         # Server monitoring (Crafty + Dashdot)
     ├── events/               # Discord event handlers
     │   ├── ready.js
     │   ├── interactionCreate.js
@@ -161,11 +158,16 @@ nodejs/
         │   ├── gameEngine.js
         │   ├── gameLogic.js
         │   └── wordProcessing.js
-        └── wordchain/        # English word chain game
+        ├── wordchain/        # English word chain game
+        │   ├── index.js
+        │   ├── constants.js
+        │   ├── db.js
+        │   └── gameEngine.js
+        └── server/           # Server monitoring
             ├── index.js
             ├── constants.js
-            ├── db.js
-            └── gameEngine.js
+            ├── craftyClient.js   # Minecraft (Crafty Controller)
+            └── dashdotClient.js  # Debian (Dashdot)
 ```
 
 ## Data Storage
