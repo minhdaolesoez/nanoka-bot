@@ -14,6 +14,12 @@ export async function execute(message) {
     // Ignore bot messages
     if (message.author.bot) return;
 
+    // Handle AI chatbot commands (!grok, !claude)
+    if (message.content.startsWith('!grok ') || message.content.startsWith('!claude ')) {
+        await handleAIChatCommand(message);
+        return;
+    }
+
     // Handle counting messages first
     await handleCountingMessage(message);
 
@@ -387,4 +393,83 @@ async function handleWordChainMessage(message) {
         .setTimestamp();
 
     await message.channel.send({ embeds: [embed] });
+}
+
+/**
+ * Handle AI chatbot commands (!grok, !claude)
+ */
+async function handleAIChatCommand(message) {
+    const isGrok = message.content.startsWith('!grok ');
+    const isClaude = message.content.startsWith('!claude ');
+    
+    const prompt = message.content.slice(isGrok ? 6 : 8).trim();
+    
+    if (!prompt) {
+        return message.reply('❌ Please provide a message!');
+    }
+
+    // Get API config based on command
+    let apiUrl, apiKey, model, botName;
+    
+    if (isGrok) {
+        apiUrl = process.env.GROK_API_URL || 'https://api.x.ai/v1';
+        apiKey = process.env.GROK_API_KEY;
+        model = process.env.GROK_MODEL || 'grok-3-latest';
+        botName = 'Grok';
+    } else {
+        apiUrl = process.env.CLAUDE_API_URL || 'https://api.anthropic.com/v1';
+        apiKey = process.env.CLAUDE_API_KEY;
+        model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514';
+        botName = 'Claude';
+    }
+
+    if (!apiKey) {
+        return message.reply(`❌ ${botName} API key not configured.`);
+    }
+
+    // Show typing indicator
+    await message.channel.sendTyping();
+
+    try {
+        const response = await fetch(`${apiUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ]
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.text();
+            console.error(`${botName} API error:`, response.status, error);
+            return message.reply(`❌ API Error: ${response.status} - ${error.slice(0, 200)}`);
+        }
+
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content || 'No response.';
+
+        // Discord message limit is 2000 chars
+        if (reply.length > 2000) {
+            const chunks = reply.match(/.{1,2000}/gs) || [];
+            await message.reply(chunks[0]);
+            for (let i = 1; i < chunks.length; i++) {
+                await message.channel.send(chunks[i]);
+            }
+        } else {
+            await message.reply(reply);
+        }
+
+    } catch (error) {
+        console.error(`${botName} error:`, error);
+        await message.reply(`❌ Error: ${error.message}`);
+    }
 }
