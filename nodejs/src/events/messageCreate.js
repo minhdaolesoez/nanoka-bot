@@ -176,14 +176,31 @@ async function handleNoituDM(message) {
         
         if (botWord) {
             // Bot plays a word
-            checkUser(message.author.id, botWord, true);
+            const botResult = checkUser(message.author.id, botWord, true);
+
+            if (botResult.type === RESPONSE_TYPES.ERROR && botResult.code === RESPONSE_CODES.LOSS) {
+                await message.reply({
+                    embeds: [new EmbedBuilder()
+                        .setTitle('🎉 Bạn thắng!')
+                        .setDescription(`${botResult.message || `Tôi không tìm được từ tiếp theo cho "${botWord}".`}
+
+🎮 **Game mới đã bắt đầu!**
+Từ hiện tại: **${botResult.currentWord}**`)
+                        .setColor(0x00FF00)]
+                });
+                return;
+            }
+
             await message.reply(`${botWord}`);
         } else {
             // Bot can't find a word - user wins!
             await message.reply({
                 embeds: [new EmbedBuilder()
                     .setTitle('🎉 Bạn thắng!')
-                    .setDescription(`Tôi không tìm được từ bắt đầu bằng "**${lastSyllable}**".\nDùng \`/newgame\` để chơi lại!`)
+                    .setDescription(`Tôi không tìm được từ bắt đầu bằng "**${lastSyllable}**".
+
+🎮 **Game mới đã bắt đầu!**
+Từ hiện tại: **${result.currentWord}**`)
                     .setColor(0x00FF00)]
             });
         }
@@ -247,7 +264,10 @@ async function handleNoituChannel(message) {
             await message.channel.send({
                 embeds: [new EmbedBuilder()
                     .setTitle('🎉 Chiến thắng!')
-                    .setDescription(result.message)
+                    .setDescription(`${result.message}
+
+🎮 **Game mới đã bắt đầu!**
+Từ hiện tại: **${result.currentWord}**`)
                     .setColor(0x00FF00)]
             });
             return;
@@ -260,14 +280,31 @@ async function handleNoituChannel(message) {
             
             if (botWord) {
                 // Bot plays a word
-                checkChannel(message.channel.id, message.client.user.id, botWord);
+                const botResult = checkChannel(message.channel.id, message.client.user.id, botWord);
+
+                if (botResult.type === RESPONSE_TYPES.ERROR && botResult.code === RESPONSE_CODES.LOSS) {
+                    await message.channel.send({
+                        embeds: [new EmbedBuilder()
+                            .setTitle('🎉 Các bạn thắng!')
+                            .setDescription(`${botResult.message || `Bot không tìm được từ tiếp theo cho "${botWord}".`}
+
+🎮 **Game mới đã bắt đầu!**
+Từ hiện tại: **${botResult.currentWord}**`)
+                            .setColor(0x00FF00)]
+                    });
+                    return;
+                }
+
                 await message.channel.send(`🤖 ${botWord}`);
             } else {
                 // Bot can't find a word - players win!
                 await message.channel.send({
                     embeds: [new EmbedBuilder()
                         .setTitle('🎉 Các bạn thắng!')
-                        .setDescription(`Bot không tìm được từ bắt đầu bằng "**${lastSyllable}**".\nDùng \`/newgame\` để chơi lại!`)
+                        .setDescription(`Bot không tìm được từ bắt đầu bằng "**${lastSyllable}**".
+
+🎮 **Game mới đã bắt đầu!**
+Từ hiện tại: **${result.currentWord}**`)
                         .setColor(0x00FF00)]
                 });
             }

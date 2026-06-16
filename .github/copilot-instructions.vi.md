@@ -155,3 +155,11 @@ DISCORD_TOKEN=your_token
 - Tất cả IDs lưu dạng string (`String(userId)`)
 - Dùng EmbedBuilder cho Discord messages đẹp
 - Tất cả UI/text hiển thị cho user nên dùng tiếng Anh
+
+## Commit Message
+Dùng Conventional Commits cho commit git:
+- `feat:` tính năng mới
+- `fix:` sửa lỗi
+- `docs:` tài liệu
+- `chore:` build, config, dependency hoặc tooling
+- `brand:` thiết kế, assets hoặc nhận diện hình ảnh

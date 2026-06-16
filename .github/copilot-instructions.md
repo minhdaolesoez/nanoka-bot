@@ -155,3 +155,11 @@ DISCORD_TOKEN=your_token
 - All IDs stored as strings (`String(userId)`)
 - EmbedBuilder for rich Discord messages
 - All UI/user-facing text should be in English
+
+## Commit Messages
+Use Conventional Commits for git commit messages:
+- `feat:` new feature
+- `fix:` bug fix
+- `docs:` documentation only
+- `chore:` build, config, dependency, or tooling changes
+- `brand:` design, assets, or visual identity changes
