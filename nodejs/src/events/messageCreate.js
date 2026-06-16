@@ -1,7 +1,7 @@
 import { Events, EmbedBuilder } from 'discord.js';
 import { isQuarantineChannel, incrementBanCounter, getLogChannel } from '../modules/quarantine.js';
 import { handleCountingMessage } from '../modules/countingLogic.js';
-import { checkChannel, checkUser, isChannelInGame, getChannelMode } from '../modules/noitu/index.js';
+import { checkChannel, checkUser, isChannelInGame, getChannelMode, resetChannelGame, resetUserGame } from '../modules/noitu/index.js';
 import { getWordStartingWith, normalizeVietnamese } from '../modules/noitu/index.js';
 import { RESPONSE_CODES, RESPONSE_TYPES, GAME_MODES } from '../modules/noitu/constants.js';
 import { processWord, getMatchState, knockOutPlayer, abortMatch, checkTimeouts, checkAborts } from '../modules/wordchain/index.js';
@@ -194,13 +194,14 @@ Từ hiện tại: **${botResult.currentWord}**`)
             await message.reply(`${botWord}`);
         } else {
             // Bot can't find a word - user wins!
+            const newWord = resetUserGame(message.author.id);
             await message.reply({
                 embeds: [new EmbedBuilder()
                     .setTitle('🎉 Bạn thắng!')
                     .setDescription(`Tôi không tìm được từ bắt đầu bằng "**${lastSyllable}**".
 
 🎮 **Game mới đã bắt đầu!**
-Từ hiện tại: **${result.currentWord}**`)
+Từ hiện tại: **${newWord}**`)
                     .setColor(0x00FF00)]
             });
         }
@@ -298,13 +299,14 @@ Từ hiện tại: **${botResult.currentWord}**`)
                 await message.channel.send(`🤖 ${botWord}`);
             } else {
                 // Bot can't find a word - players win!
+                const newWord = resetChannelGame(message.channel.id);
                 await message.channel.send({
                     embeds: [new EmbedBuilder()
                         .setTitle('🎉 Các bạn thắng!')
                         .setDescription(`Bot không tìm được từ bắt đầu bằng "**${lastSyllable}**".
 
 🎮 **Game mới đã bắt đầu!**
-Từ hiện tại: **${result.currentWord}**`)
+Từ hiện tại: **${newWord}**`)
                         .setColor(0x00FF00)]
                 });
             }
