@@ -108,6 +108,11 @@ A Discord moderation bot with warnings, quarantine, counting, Vietnamese word ch
    npm run dev
    ```
 
+   To run the dev script under PM2 on Windows, use the repo-level ecosystem file:
+   ```bash
+   pm2 start ecosystem.config.cjs
+   ```
+
 ## Requirements
 
 - Node.js 18.0.0 or higher

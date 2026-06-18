@@ -108,6 +108,11 @@ Bot Discord hỗ trợ quản lý server với các tính năng: cảnh cáo, c�
    npm run dev
    ```
 
+   Để chạy dev bằng PM2 trên Windows, dùng file ecosystem ở thư mục gốc:
+   ```bash
+   pm2 start ecosystem.config.cjs
+   ```
+
 ## Yêu Cầu
 
 - Node.js 18.0.0 trở lên
